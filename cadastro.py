@@ -35,7 +35,7 @@ try:
                 }])
                 
                 # Substituído espaço por %20 para evitar erro de caractere de controle
-                conn.create(spreadsheet=URL, worksheet="MATERIAS%20SIEGI", data=novo_material)
+                conn.create(spreadsheet=URL, worksheet="MATERIAS_SIEGI", data=novo_material)
                 st.success(f"Material '{descricao.upper()}' adicionado com sucesso ao catálogo!")
             else:
                 st.warning("⚠️ Nome do material e Unidade são obrigatórios.")
@@ -44,7 +44,7 @@ try:
     st.subheader("📋 Materiais Recentes no Catálogo")
     
     # Substituído espaço por %20 aqui também
-    df_lista = conn.read(spreadsheet=URL, worksheet="MATERIAS%20SIEGI", ttl="5m")
+    df_lista = conn.read(spreadsheet=URL, worksheet="MATERIAS_SIEGI", ttl="5m")
     st.dataframe(df_lista.tail(10), use_container_width=True, hide_index=True)
 
 except Exception as e:
