@@ -12,7 +12,7 @@ URL = "https://docs.google.com/spreadsheets/d/1peB38TTNhp_FS42mpZ85wJCeqhTl5w3lX
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
 
-    st.info("Use este formulário para adicionar itens ao catálogo **MATERIAS SIEGI**.")
+    st.info("Use este formulário para adicionar itens ao catálogo **MATERIAS_SIEGI**.")
 
     with st.form("material_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
@@ -37,7 +37,7 @@ try:
                 }])
                 
                 # Salva na aba de catálogo
-                conn.create(spreadsheet=URL, worksheet="MATERIAS SIEGI", data=novo_material)
+                conn.create(spreadsheet=URL, worksheet="MATERIAS_SIEGI", data=novo_material)
                 st.success(f"Material '{descricao.upper()}' adicionado com sucesso ao catálogo!")
             else:
                 st.warning("⚠️ Nome do material e Unidade são obrigatórios.")
