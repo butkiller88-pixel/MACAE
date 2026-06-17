@@ -80,25 +80,30 @@ def export_to_excel():
 
 def import_from_almoxarifado(file):
     try:
-        # Tenta ler as abas principais da planilha do cliente
         xls = pd.ExcelFile(file)
+        count_mat = 0
         
-        # 1. Importar Materiais da aba 'MATERIAS SIEGI' ou similar
+        # 1. Importar Materiais da aba 'MATERIAS SIEGI'
         if 'MATERIAS SIEGI' in xls.sheet_names:
             df_m = pd.read_excel(xls, 'MATERIAS SIEGI')
-            # Ajustar colunas conforme a estrutura real (exemplo simplificado)
             for _, row in df_m.iterrows():
-                nome = str(row.get('DESCRIÇÃO', row.get('NOME', '')))
-                if nome and nome != 'nan':
-                    run_query("INSERT INTO materiais (nome, unidade) VALUES (?, ?)", (nome, str(row.get('UNIDADE', 'un'))), commit=True)
+                nome = str(row.get('DESCRIÇÃO', row.get('NOME', ''))).strip().upper()
+                unidade = str(row.get('UNIDADE', 'UN')).strip().upper()
+                
+                if nome and nome != 'NAN' and nome != '':
+                    # Verifica se o material já existe para não duplicar
+                    check = run_query("SELECT id FROM materiais WHERE nome = ?", (nome,))
+                    if check.empty:
+                        run_query("INSERT INTO materiais (nome, unidade) VALUES (?, ?)", (nome, unidade), commit=True)
+                        count_mat += 1
         
-        # 2. Importar Entradas
-        if 'ENTRADA' in xls.sheet_names:
-            df_e = pd.read_excel(xls, 'ENTRADA', skiprows=4) # Geralmente começa na linha 6 (skip 4 ou 5)
-            # Implementação básica de parser
-            st.info("Processando abas de Entrada...")
-
-        return True
+        if count_mat > 0:
+            st.success(f"Sucesso! {count_mat} novos materiais importados.")
+            return True
+        else:
+            st.warning("Nenhum material novo encontrado para importar.")
+            return False
+            
     except Exception as e:
         st.error(f"Erro na importação: {e}")
         return False
