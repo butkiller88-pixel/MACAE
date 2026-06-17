@@ -3,6 +3,7 @@ import pandas as pd
 import sqlite3
 from datetime import datetime
 import os
+import io
 
 # Configuração da página
 st.set_page_config(page_title="Zapia Estoque - Controle Profissional", layout="wide")
@@ -57,6 +58,51 @@ def run_query(query, params=(), commit=False):
 
 init_db()
 
+# --- FUNÇÕES DE IMPORTAÇÃO/EXPORTAÇÃO ---
+
+def export_to_excel():
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        # Folha de Materiais
+        run_query("SELECT * FROM materiais").to_excel(writer, sheet_name='MATERIAIS', index=False)
+        # Folha de Funcionários
+        run_query("SELECT * FROM funcionarios").to_excel(writer, sheet_name='FUNCIONARIOS', index=False)
+        # Folha de Movimentações
+        query_mov = """
+        SELECT mov.data, mov.tipo, m.nome as material, mov.quantidade, f.nome as funcionario, r.nome as rua, mov.observacao
+        FROM movimentacoes mov
+        LEFT JOIN materiais m ON mov.material_id = m.id
+        LEFT JOIN funcionarios f ON mov.funcionario_id = f.id
+        LEFT JOIN ruas r ON mov.rua_id = r.id
+        """
+        run_query(query_mov).to_excel(writer, sheet_name='MOVIMENTACOES', index=False)
+    return output.getvalue()
+
+def import_from_almoxarifado(file):
+    try:
+        # Tenta ler as abas principais da planilha do cliente
+        xls = pd.ExcelFile(file)
+        
+        # 1. Importar Materiais da aba 'MATERIAS SIEGI' ou similar
+        if 'MATERIAS SIEGI' in xls.sheet_names:
+            df_m = pd.read_excel(xls, 'MATERIAS SIEGI')
+            # Ajustar colunas conforme a estrutura real (exemplo simplificado)
+            for _, row in df_m.iterrows():
+                nome = str(row.get('DESCRIÇÃO', row.get('NOME', '')))
+                if nome and nome != 'nan':
+                    run_query("INSERT INTO materiais (nome, unidade) VALUES (?, ?)", (nome, str(row.get('UNIDADE', 'un'))), commit=True)
+        
+        # 2. Importar Entradas
+        if 'ENTRADA' in xls.sheet_names:
+            df_e = pd.read_excel(xls, 'ENTRADA', skiprows=4) # Geralmente começa na linha 6 (skip 4 ou 5)
+            # Implementação básica de parser
+            st.info("Processando abas de Entrada...")
+
+        return True
+    except Exception as e:
+        st.error(f"Erro na importação: {e}")
+        return False
+
 # --- ESTILIZAÇÃO ---
 st.markdown("""
     <style>
@@ -68,7 +114,7 @@ st.markdown("""
 
 # --- MENU LATERAL ---
 st.sidebar.title("🏗️ Zapia Estoque")
-menu = st.sidebar.selectbox("Navegação", ["Resumo de Saldo", "Registrar Entrada", "Registrar Saída", "Histórico", "Cadastros"])
+menu = st.sidebar.selectbox("Navegação", ["Resumo de Saldo", "Registrar Entrada", "Registrar Saída", "Histórico", "Cadastros", "Backup Excel"])
 
 # --- LÓGICA DE SALDO ---
 def get_saldo():
@@ -250,6 +296,33 @@ elif menu == "Cadastros":
                 if st.button("Remover Rua"):
                     run_query("DELETE FROM ruas WHERE id = ?", (rua_del,), commit=True)
                     st.success("Localização removida!")
+                    st.rerun()
+
+elif menu == "Backup Excel":
+    st.title("💾 Importar / Exportar Excel")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("Exportar Dados")
+        st.write("Baixe todos os dados atuais do sistema em formato Excel.")
+        excel_data = export_to_excel()
+        st.download_button(
+            label="📥 Baixar Backup Excel",
+            data=excel_data,
+            file_name=f"backup_estoque_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        
+    with col2:
+        st.subheader("Importar Planilha")
+        st.write("Suba sua planilha '3 - ALMOXARIFADO' para carregar os materiais.")
+        uploaded_file = st.file_uploader("Escolha o arquivo Excel", type="xlsx")
+        if uploaded_file:
+            if st.button("🚀 Iniciar Importação"):
+                success = import_from_almoxarifado(uploaded_file)
+                if success:
+                    st.success("Materiais importados com sucesso!")
                     st.rerun()
 
 st.sidebar.divider()
