@@ -81,28 +81,104 @@ def export_to_excel():
 def import_from_almoxarifado(file):
     try:
         xls = pd.ExcelFile(file)
-        count_mat = 0
+        logs = []
         
-        # 1. Importar Materiais da aba 'MATERIAS SIEGI'
+        # 1. Importar MATERIAIS (Aba 'MATERIAS SIEGI')
         if 'MATERIAS SIEGI' in xls.sheet_names:
             df_m = pd.read_excel(xls, 'MATERIAS SIEGI')
+            count = 0
             for _, row in df_m.iterrows():
                 nome = str(row.get('DESCRIÇÃO', row.get('NOME', ''))).strip().upper()
                 unidade = str(row.get('UNIDADE', 'UN')).strip().upper()
-                
-                if nome and nome != 'NAN' and nome != '':
-                    # Verifica se o material já existe para não duplicar
+                if nome and nome not in ['NAN', '']:
                     check = run_query("SELECT id FROM materiais WHERE nome = ?", (nome,))
                     if check.empty:
                         run_query("INSERT INTO materiais (nome, unidade) VALUES (?, ?)", (nome, unidade), commit=True)
-                        count_mat += 1
-        
-        if count_mat > 0:
-            st.success(f"Sucesso! {count_mat} novos materiais importados.")
-            return True
-        else:
-            st.warning("Nenhum material novo encontrado para importar.")
-            return False
+                        count += 1
+            logs.append(f"✅ {count} Materiais importados.")
+
+        # 2. Importar FUNCIONÁRIOS (Aba 'SAÍDA' - Coluna Funcionário)
+        if 'SAÍDA' in xls.sheet_names:
+            df_s = pd.read_excel(xls, 'SAÍDA', skiprows=4)
+            if 'FUNCIONÁRIO' in df_s.columns:
+                funcs = df_s['FUNCIONÁRIO'].dropna().unique()
+                count = 0
+                for f in funcs:
+                    nome_f = str(f).strip().upper()
+                    if nome_f and nome_f not in ['NAN', '']:
+                        check = run_query("SELECT id FROM funcionarios WHERE nome = ?", (nome_f,))
+                        if check.empty:
+                            run_query("INSERT INTO funcionarios (nome) VALUES (?)", (nome_f,), commit=True)
+                            count += 1
+                logs.append(f"✅ {count} Funcionários identificados e salvos.")
+
+        # 3. Importar LOCALIZAÇÕES / RUAS (Aba 'ENTRADA' - Coluna Destino ou similar)
+        if 'ENTRADA' in xls.sheet_names:
+            df_e = pd.read_excel(xls, 'ENTRADA', skiprows=4)
+            if 'DESTINO' in df_e.columns:
+                ruas = df_e['DESTINO'].dropna().unique()
+                count = 0
+                for r in ruas:
+                    nome_r = str(r).strip().upper()
+                    if nome_r and nome_r not in ['NAN', '']:
+                        check = run_query("SELECT id FROM ruas WHERE nome = ?", (nome_r,))
+                        if check.empty:
+                            run_query("INSERT INTO ruas (nome) VALUES (?)", (nome_r,), commit=True)
+                            count += 1
+                logs.append(f"✅ {count} Localizações/Ruas importadas.")
+
+        # 4. Importar MOVIMENTAÇÕES (ENTRADAS E SAÍDAS)
+        # Importar Entradas
+        if 'ENTRADA' in xls.sheet_names:
+            count_e = 0
+            df_ent = pd.read_excel(xls, 'ENTRADA', skiprows=4)
+            for _, row in df_ent.iterrows():
+                try:
+                    data = str(row.get('DATA', datetime.now()))[:10]
+                    mat_nome = str(row.get('DESCRIÇÃO', '')).strip().upper()
+                    qtd = float(row.get('QNT', 0))
+                    rua_nome = str(row.get('DESTINO', '')).strip().upper()
+                    obs = str(row.get('OBS', 'Importado do Excel'))
+
+                    mat_id = run_query("SELECT id FROM materiais WHERE nome = ?", (mat_nome,))
+                    rua_id = run_query("SELECT id FROM ruas WHERE nome = ?", (rua_nome,))
+                    
+                    if not mat_id.empty and qtd > 0:
+                        m_id = int(mat_id['id'].values[0])
+                        r_id = int(rua_id['id'].values[0]) if not rua_id.empty else None
+                        run_query("INSERT INTO movimentacoes (data, tipo, material_id, quantidade, rua_id, observacao) VALUES (?, 'Entrada', ?, ?, ?, ?)",
+                                  (data, m_id, qtd, r_id, obs), commit=True)
+                        count_e += 1
+                except: continue
+            logs.append(f"✅ {count_e} Registros de Entrada importados.")
+
+        # Importar Saídas
+        if 'SAÍDA' in xls.sheet_names:
+            count_s = 0
+            df_sai = pd.read_excel(xls, 'SAÍDA', skiprows=4)
+            for _, row in df_sai.iterrows():
+                try:
+                    data = str(row.get('DATA', datetime.now()))[:10]
+                    mat_nome = str(row.get('DESCRIÇÃO', '')).strip().upper()
+                    qtd = float(row.get('QNT', 0))
+                    func_nome = str(row.get('FUNCIONÁRIO', '')).strip().upper()
+                    obs = str(row.get('OBSERVAÇÃO ', 'Importado do Excel'))
+
+                    mat_id = run_query("SELECT id FROM materiais WHERE nome = ?", (mat_nome,))
+                    func_id = run_query("SELECT id FROM funcionarios WHERE nome = ?", (func_nome,))
+                    
+                    if not mat_id.empty and qtd > 0:
+                        m_id = int(mat_id['id'].values[0])
+                        f_id = int(func_id['id'].values[0]) if not func_id.empty else None
+                        run_query("INSERT INTO movimentacoes (data, tipo, material_id, quantidade, funcionario_id, observacao) VALUES (?, 'Saída', ?, ?, ?, ?)",
+                                  (data, m_id, qtd, f_id, obs), commit=True)
+                        count_s += 1
+                except: continue
+            logs.append(f"✅ {count_s} Registros de Saída importados.")
+
+        for log in logs:
+            st.info(log)
+        return True
             
     except Exception as e:
         st.error(f"Erro na importação: {e}")
