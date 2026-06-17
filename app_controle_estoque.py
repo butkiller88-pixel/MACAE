@@ -5,7 +5,7 @@ from datetime import datetime
 import os
 
 # Configuração da página
-st.set_page_config(page_title="Zapia Estoque - Controle Profissional", layout="wide")
+st.set_page_config(page_title="Controle de Macae - almoxarifado", layout="wide")
 
 # --- BANCO DE DADOS ---
 DB_NAME = "estoque_obras.db"
@@ -218,4 +218,4 @@ elif menu == "Cadastros":
         st.dataframe(run_query("SELECT * FROM ruas"), use_container_width=True)
 
 st.sidebar.divider()
-st.sidebar.caption("Desenvolvido por Zapia para Gestão de Obras")
+st.sidebar.caption("OMEGA - GRENDE MACAE")
