@@ -5,7 +5,7 @@ from datetime import datetime
 import os
 
 # Configuração da página
-st.set_page_config(page_title="Controle de Macae - almoxarifado", layout="wide")
+st.set_page_config(page_title="Zapia Estoque - Controle Profissional", layout="wide")
 
 # --- BANCO DE DADOS ---
 DB_NAME = "estoque_obras.db"
@@ -161,6 +161,14 @@ elif menu == "Registrar Saída":
 
 elif menu == "Histórico":
     st.title("📜 Histórico de Movimentações")
+    
+    # Adicionar opção de limpar histórico
+    with st.expander("⚠️ Zona de Perigo"):
+        if st.button("Apagar Todo o Histórico"):
+            run_query("DELETE FROM movimentacoes", commit=True)
+            st.success("Histórico apagado com sucesso!")
+            st.rerun()
+
     query = """
     SELECT 
         mov.data as Data,
@@ -218,4 +226,4 @@ elif menu == "Cadastros":
         st.dataframe(run_query("SELECT * FROM ruas"), use_container_width=True)
 
 st.sidebar.divider()
-st.sidebar.caption("OMEGA - GRENDE MACAE")
+st.sidebar.caption("Desenvolvido por Zapia para Gestão de Obras")
