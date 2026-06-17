@@ -202,7 +202,16 @@ elif menu == "Cadastros":
                 run_query("INSERT INTO materiais (nome, unidade, categoria) VALUES (?, ?, ?)", (nome_mat, unid_mat, cat_mat), commit=True)
                 st.rerun()
         st.write("Materiais Cadastrados:")
-        st.dataframe(run_query("SELECT * FROM materiais"), use_container_width=True)
+        df_mat = run_query("SELECT * FROM materiais")
+        st.dataframe(df_mat, use_container_width=True)
+        
+        with st.expander("🗑️ Apagar Material"):
+            if not df_mat.empty:
+                mat_del = st.selectbox("Selecione o Material para remover", df_mat['id'], format_func=lambda x: df_mat[df_mat['id']==x]['nome'].values[0])
+                if st.button("Remover Material"):
+                    run_query("DELETE FROM materiais WHERE id = ?", (mat_del,), commit=True)
+                    st.success("Material removido!")
+                    st.rerun()
 
     with aba2:
         st.subheader("Novo Funcionário")
@@ -213,7 +222,16 @@ elif menu == "Cadastros":
                 run_query("INSERT INTO funcionarios (nome, cargo) VALUES (?, ?)", (nome_func, cargo_func), commit=True)
                 st.rerun()
         st.write("Funcionários:")
-        st.dataframe(run_query("SELECT * FROM funcionarios"), use_container_width=True)
+        df_func = run_query("SELECT * FROM funcionarios")
+        st.dataframe(df_func, use_container_width=True)
+        
+        with st.expander("🗑️ Remover Funcionário"):
+            if not df_func.empty:
+                func_del = st.selectbox("Selecione o Funcionário para remover", df_func['id'], format_func=lambda x: df_func[df_func['id']==x]['nome'].values[0])
+                if st.button("Remover Funcionário"):
+                    run_query("DELETE FROM funcionarios WHERE id = ?", (func_del,), commit=True)
+                    st.success("Funcionário removido!")
+                    st.rerun()
 
     with aba3:
         st.subheader("Nova Rua / Localização")
@@ -223,7 +241,16 @@ elif menu == "Cadastros":
                 run_query("INSERT INTO ruas (nome) VALUES (?)", (nome_rua,), commit=True)
                 st.rerun()
         st.write("Localizações:")
-        st.dataframe(run_query("SELECT * FROM ruas"), use_container_width=True)
+        df_rua = run_query("SELECT * FROM ruas")
+        st.dataframe(df_rua, use_container_width=True)
+        
+        with st.expander("🗑️ Remover Rua"):
+            if not df_rua.empty:
+                rua_del = st.selectbox("Selecione a Rua para remover", df_rua['id'], format_func=lambda x: df_rua[df_rua['id']==x]['nome'].values[0])
+                if st.button("Remover Rua"):
+                    run_query("DELETE FROM ruas WHERE id = ?", (rua_del,), commit=True)
+                    st.success("Localização removida!")
+                    st.rerun()
 
 st.sidebar.divider()
 st.sidebar.caption("Desenvolvido por Zapia para Gestão de Obras")
