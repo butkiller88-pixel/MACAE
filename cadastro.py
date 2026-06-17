@@ -12,7 +12,7 @@ URL = "https://docs.google.com/spreadsheets/d/1peB38TTNhp_FS42mpZ85wJCeqhTl5w3lX
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
 
-    st.info("Use este formulário para adicionar itens ao catálogo **MATERIAS_SIEGI**.")
+    st.info("Use este formulário para adicionar itens ao catálogo **MATERIAS SIEGI**.")
 
     with st.form("material_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
@@ -27,8 +27,6 @@ try:
 
         if submit_m:
             if descricao and unidade:
-                # Monta a linha conforme as colunas da aba "MATERIAS SIEGI"
-                # Código, Descrição, Unidade, Cód. Produto Fiscal
                 novo_material = pd.DataFrame([{
                     "Código": codigo,
                     "Descrição": descricao.upper(),
@@ -36,18 +34,20 @@ try:
                     "Cód. Produto Fiscal": cod_fiscal
                 }])
                 
-                # Salva na aba de catálogo
-                conn.create(spreadsheet=URL, worksheet="MATERIAS_SIEGI", data=novo_material)
+                # Substituído espaço por %20 para evitar erro de caractere de controle
+                conn.create(spreadsheet=URL, worksheet="MATERIAS%20SIEGI", data=novo_material)
                 st.success(f"Material '{descricao.upper()}' adicionado com sucesso ao catálogo!")
             else:
                 st.warning("⚠️ Nome do material e Unidade são obrigatórios.")
 
-    # Exibição rápida dos últimos materiais cadastrados
     st.divider()
     st.subheader("📋 Materiais Recentes no Catálogo")
-    df_lista = conn.read(spreadsheet=URL, worksheet="MATERIAS SIEGI", ttl="5m")
+    
+    # Substituído espaço por %20 aqui também
+    df_lista = conn.read(spreadsheet=URL, worksheet="MATERIAS%20SIEGI", ttl="5m")
     st.dataframe(df_lista.tail(10), use_container_width=True, hide_index=True)
 
 except Exception as e:
     st.error("Erro ao acessar o catálogo de materiais.")
     st.info(f"Detalhe: {e}")
+
